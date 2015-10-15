@@ -6,12 +6,12 @@
     this.gameBounds = [800, 500];
     this.ship = new SI.Ship(this);
     this.opps = [];
-    this.dir = 1;
+    this.dir = 1.3;
     this.descend = false;
     this.rockets = [];
     this.bombs = [];
     this.pressedKeys = {};
-    this.attackFrequency = 0.001;
+    this.attackFrequency = .015;
     this.shields = 10;
     this.ctx = ctx;
 
@@ -93,6 +93,15 @@
       this.ctx.fillText(text, 200, 300);
       clearInterval(this.intervalId);
     }
+    //check for gameover
+    if (this.opps.length < 1) {
+      this.ctx.clearRect(0, 0, this.gameBounds[0], this.gameBounds[1]);
+      this.ctx.font="50px Roboto";
+      this.ctx.fillStyle = '#000000';
+      var text = " YOU WIN ";
+      this.ctx.fillText(text, 200, 300);
+      clearInterval(this.intervalId);
+    }
   }
 
   Game.prototype.play = function () {
@@ -154,12 +163,8 @@
     //check for descend
     for (var i = 0; i < this.opps.length; i++) {
       var opp = this.opps[i];
-      if ((opp.x + this.dir + opp.width) > this.gameBounds[0]) {
-        this.dir = -1;
-        this.descend = true;
-      }
-      if (opp.x + this.dir < 0) {
-        this.dir = 1;
+      if ((opp.x + this.dir + opp.width) > this.gameBounds[0] || opp.x + this.dir < 0) {
+        this.dir = -1 * this.dir;
         this.descend = true;
       }
       if (opp.y > this.gameBounds[1]) {
@@ -173,7 +178,6 @@
       opp.x += this.dir;
       if (this.descend) {
         opp.y += 25;
-
       }
     }
     this.descend = false;
@@ -206,16 +210,33 @@
       }
     }
 
-    //let opps fight back
+    //group up the front line
+    var frontLine = {};
     for (var i = 0; i < this.opps.length; i++) {
-      var chance = Math.random();
-      if (this.attackFrequency > chance) {
-        this.opps[i].fire(true);
-      }
-      if (this.opps[i].cooldown > 0) {
-        this.opps[i].cooldown -= 1;
+      var opp = this.opps[i];
+      frontLine[opp.x] = frontLine[opp.x] || opp;
+      var current = frontLine[opp.x];
+      if (opp.y > current.y) {
+        frontLine[opp.x] = opp
       }
     }
+
+    // let opps fight back
+    Object.keys(frontLine).forEach(function (key) {
+      var opp = frontLine[key]
+      if (opp) {
+        if (this.attackFrequency > Math.random()) {
+          console.log("whu")
+          opp.fire(true);
+        }
+        if (opp.cooldown > 0) {
+          opp.cooldown -= 1;
+        }
+      }
+    }.bind(this))
+
+
+
   }
 
 

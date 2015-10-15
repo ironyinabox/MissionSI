@@ -16,7 +16,7 @@
         this.cooldown = 40;
       } else {
         this.game.bombs.push(new Bomb(this.game, this))
-        this.cooldown = 200;
+        this.cooldown = 40;
       }
     }
   }
