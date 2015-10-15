@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Space Invaders</title>
+
+    <style>
+      html, body, canvas {
+        padding: 0px;
+        margin: 0px;
+      }
+
+      #gameCanvas {
+        display: block;
+        margin: auto;
+      }
+    </style>
+  </head>
+
+  <body>
+    <canvas id="gameCanvas"></canvas>
+    <script src="jquery-1.9.1.js"></script>
+    <script src="ship.js"></script>
+    <script src="game.js"></script>
+    <script>
+      var game = new SI.Game();
+      var canvas = document.getElementById("gameCanvas");
+      var ctx = canvas.getContext("2d");
+      game.setup(canvas);
+
+      game.play(ctx);
+    </script>
+  </body>
+</html>
