@@ -57,8 +57,7 @@
     this.ctx.fillRect(0, 0, this.gameBounds[0], this.gameBounds[1])
 
     //Draw ship
-    this.ctx.fillStyle = '#999999';
-    this.ctx.fillRect(this.ship.x, this.ship.y, this.ship.width, this.ship.height)
+    this.ship.draw(this.ctx);
 
     //Draw Rockets
     this.ctx.fillStyle = '#CC3300';
@@ -69,7 +68,7 @@
     //Draw Opps
     this.ctx.fillStyle = '#CC00CC';
     this.opps.forEach(function (opp) {
-      this.ctx.fillRect(opp.x, opp.y, opp.width, opp.height)
+      opp.draw(this.ctx, true);
     })
 
     //Draw Bombs
@@ -187,10 +186,12 @@
       var bomb = this.bombs[i];
       if(bomb.x >= this.ship.x && bomb.x <= (this.ship.x + this.ship.width) &&
           bomb.y <= (this.ship.y + this.ship.height) && bomb.y >= this.ship.y) {
-
+          if (!bomb.bang) {
+            bomb.bang = true;
+            this.shields -= 1;
+            break;
+          }
           this.bombs.splice(j--, 1);
-          this.shields -= 1;
-          break;
       }
     }
 
