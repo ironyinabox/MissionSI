@@ -8,25 +8,40 @@
         padding: 0px;
         margin: 0px;
       }
+      h1 {
+        font-family: sans-serif;
+        display: block;
+        text-align: center;
+      }
+      strong {
+        display: block;
+        text-align: center;
+      }
 
       #gameCanvas {
         display: block;
         margin: auto;
       }
+
     </style>
   </head>
 
   <body>
+    <h1> Mission S.I </h1>
     <canvas id="gameCanvas"></canvas>
     <script src="jquery-1.9.1.js"></script>
+    <br>
+    <strong>
+      Use arrow keys for lateral movment, spacebar to fire ze missles
+    </strong>
+
     <script src="ship.js"></script>
     <script src="game.js"></script>
     <script>
-      var game = new SI.Game();
       var canvas = document.getElementById("gameCanvas");
       var ctx = canvas.getContext("2d");
+      var game = new SI.Game(ctx);
       game.setup(canvas);
-
       game.play(ctx);
     </script>
   </body>

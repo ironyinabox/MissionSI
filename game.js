@@ -1,15 +1,19 @@
 (function () {
   window.SI = window.SI || {};
 
-  var Game = SI.Game = function () {
+  var Game = SI.Game = function (ctx) {
     var that = this;
     this.gameBounds = [800, 500];
     this.ship = new SI.Ship(this);
     this.opps = [];
+    this.dir = 1;
+    this.descend = false;
     this.rockets = [];
     this.bombs = [];
     this.pressedKeys = {};
-    this.attackFrequency = 0.9;
+    this.attackFrequency = 0.001;
+    this.shields = 10;
+    this.ctx = ctx;
 
 
     window.addEventListener("keydown", function (e) {
@@ -28,8 +32,17 @@
   }
 
   Game.prototype.startGame = function () {
-    for (var i = 1; i < 10; i++) {
-      this.opps.push(new SI.Ship(this, this.gameBounds[0] * (i/10.0), this.gameBounds[1]/3))
+    for (var j = 1; j < 6; j++) {
+      var rank = (j * 30) - 20
+
+      for (var i = 0; i <= 10; i++) {
+        var file = this.gameBounds[0]/4 + (i * 30)
+        this.opps.push(new SI.Ship(
+          this,
+          file,
+          rank
+        ))
+      }
     }
   }
 
@@ -38,45 +51,60 @@
     gameCanvas.height = this.gameBounds[1];
   }
 
-  Game.prototype.draw = function (ctx) {
+  Game.prototype.draw = function () {
     //Draw board
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, this.gameBounds[0], this.gameBounds[1])
+    this.ctx.fillStyle = '#000000';
+    this.ctx.fillRect(0, 0, this.gameBounds[0], this.gameBounds[1])
 
     //Draw ship
-    ctx.fillStyle = '#999999';
-    ctx.fillRect(this.ship.x, this.ship.y, this.ship.width, this.ship.height)
+    this.ctx.fillStyle = '#999999';
+    this.ctx.fillRect(this.ship.x, this.ship.y, this.ship.width, this.ship.height)
 
     //Draw Rockets
-    ctx.fillStyle = '#CC3300';
+    this.ctx.fillStyle = '#CC3300';
     this.rockets.forEach(function (rocket) {
-      ctx.fillRect(rocket.x, rocket.y, rocket.width, rocket.height)
+      this.ctx.fillRect(rocket.x, rocket.y, rocket.width, rocket.height)
     })
 
     //Draw Opps
-    ctx.fillStyle = '#CC00CC';
+    this.ctx.fillStyle = '#CC00CC';
     this.opps.forEach(function (opp) {
-      ctx.fillRect(opp.x, opp.y, opp.width, opp.height)
+      this.ctx.fillRect(opp.x, opp.y, opp.width, opp.height)
     })
 
     //Draw Bombs
-    ctx.fillStyle = '#CC3300';
+    this.ctx.fillStyle = '#CC3300';
     this.bombs.forEach(function (bomb) {
-      ctx.fillRect(bomb.x, bomb.y, bomb.width, bomb.height)
+      this.ctx.fillRect(bomb.x, bomb.y, bomb.width, bomb.height)
     })
+
+    //Draw HUD
+    this.ctx.font="20px Roboto";
+    this.ctx.fillStyle = '#ffffff';
+    var text = "    Shields: " + this.shields;
+    this.ctx.fillText(text, 0, 480);
+
+    //check for gameover
+    if (this.shields < 1) {
+      this.ctx.clearRect(0, 0, this.gameBounds[0], this.gameBounds[1]);
+      this.ctx.font="50px Roboto";
+      this.ctx.fillStyle = '#000000';
+      var text = " GAME OVER ";
+      this.ctx.fillText(text, 200, 300);
+      clearInterval(this.intervalId);
+    }
   }
 
-  Game.prototype.play = function (ctx) {
+  Game.prototype.play = function () {
     this.startGame();
-    window.setInterval((function () {
-      ctx.clearRect(0, 0, this.gameBounds[0], this.gameBounds[1]);
+    this.intervalId = window.setInterval((function () {
+      this,ctx.clearRect(0, 0, this.gameBounds[0], this.gameBounds[1]);
       this.update();
       this.draw(ctx);
     }).bind(this), 1000/50);
   }
 
   Game.prototype.update = function () {
-
     // move ship
     if (this.pressedKeys[37]) {
       this.ship.x -= 3
@@ -84,12 +112,8 @@
     if (this.pressedKeys[39]) {
       this.ship.x += 3
     }
-    // if (this.pressedKeys[38]) {
-    //   this.ship.y -= 3
-    // }
-    // if (this.pressedKeys[40]) {
-    //   this.ship.y += 3
-    // }
+
+    //fire zee missiles
     if (this.pressedKeys[32]) {
       if (this.ship.cooldown == 0) {
         this.ship.fire();
@@ -97,10 +121,10 @@
       }
     }
 
+    //recharge the guns
     if (this.ship.cooldown > 0) {
         this.ship.cooldown -= 1;
     }
-
     // keep ship in bounds
     if (this.ship.x < 0) {
       this.ship.x = 0;
@@ -108,12 +132,6 @@
     if (this.ship.x + this.ship.width > this.gameBounds[0]) {
       this.ship.x = this.gameBounds[0] - this.ship.width;
     }
-    // if (this.ship.y < 0) {
-    //   this.ship.y = 0;
-    // }
-    // if (this.ship.y + this.ship.height > this.gameBounds[1]) {
-    //   this.ship.y = this.gameBounds[1] - this.ship.height;
-    // }
 
     //move rockets
     for (var i = 0; i < this.rockets.length; i++) {
@@ -130,6 +148,45 @@
       bomb.y += 3;
       if (bomb.y > this.gameBounds[1]) {
          this.bombs.splice(i--, 1);
+      }
+    }
+
+    //check for descend
+    for (var i = 0; i < this.opps.length; i++) {
+      var opp = this.opps[i];
+      if ((opp.x + this.dir + opp.width) > this.gameBounds[0]) {
+        this.dir = -1;
+        this.descend = true;
+      }
+      if (opp.x + this.dir < 0) {
+        this.dir = 1;
+        this.descend = true;
+      }
+      if (opp.y > this.gameBounds[1]) {
+        this.shields = 0;
+      }
+    };
+
+    //move opps
+    for (var i = 0; i < this.opps.length; i++) {
+      var opp = this.opps[i];
+      opp.x += this.dir;
+      if (this.descend) {
+        opp.y += 25;
+
+      }
+    }
+    this.descend = false;
+
+    //check for damaged shields
+    for (var i = 0; i < this.bombs.length; i++) {
+      var bomb = this.bombs[i];
+      if(bomb.x >= this.ship.x && bomb.x <= (this.ship.x + this.ship.width) &&
+          bomb.y <= (this.ship.y + this.ship.height) && bomb.y >= this.ship.y) {
+
+          this.bombs.splice(j--, 1);
+          this.shields -= 1;
+          break;
       }
     }
 
@@ -150,13 +207,14 @@
     }
 
     //let opps fight back
-
     for (var i = 0; i < this.opps.length; i++) {
       var chance = Math.random();
       if (this.attackFrequency > chance) {
         this.opps[i].fire(true);
       }
-      this.opps[i].cooldown -= 1;
+      if (this.opps[i].cooldown > 0) {
+        this.opps[i].cooldown -= 1;
+      }
     }
   }
 
