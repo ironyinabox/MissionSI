@@ -90,59 +90,35 @@
   }
 
   Game.prototype.update = function () {
-    // move ship
-    if (this.pressedKeys[37]) {
-      this.ship.x -= this.ship.vel;
-    }
-    if (this.pressedKeys[39]) {
-      this.ship.x += this.ship.vel;
-    }
-
-    //fire zee missiles
-    if (this.pressedKeys[32]) {
-      if (this.ship.cooldown == 0) {
-        this.ship.fire();
-      }
-    }
-
-    //recharge the guns
-    if (this.ship.cooldown > 0) {
-        this.ship.cooldown -= 1;
-    }
-    // keep ship in bounds
-    if (this.ship.x < 0) {
-      this.ship.x = 0;
-    }
-    if (this.ship.x + this.ship.width > this.gameBounds[0]) {
-      this.ship.x = this.gameBounds[0] - this.ship.width;
-    }
+    // update ship
+    this.ship.update();
 
     //check for descend
     for (var i = 0; i < this.enemies.length; i++) {
       var enemy = this.enemies[i];
-      if ((enemy.x + this.dir + enemy.width) > this.gameBounds[0] || enemy.x + this.dir < 0) {
-        this.dir = -1 * this.dir;
+      if (enemy.x + this.dir + enemy.width > this.gameBounds[0] || enemy.x + this.dir < 0) {
         this.descend = true;
       }
     };
 
-    //move enemies
-    for (var i = 0; i < this.enemies.length; i++) {
-      var enemy = this.enemies[i];
-      enemy.x += this.dir;
-      if (this.descend) {
-        enemy.y += enemy.vel[1];
-      }
-      if (enemy.y > this.gameBounds[1]) {
-        this.ship.shields = 0;
-      }
+    //turn them the other direction if they've hit the wall.
+    if (this.descend) {
+      this.dir = -1 * enemy.vel[0];
     }
+
+    //update enemies
+    this.enemies.forEach(function (enemy) {
+      enemy.update();
+    })
+
+    //reset when descend is complete
     this.descend = false;
 
-    //move projs
+    //update projs
     this.proj.forEach(function (proj, idx) {
       proj.x += proj.vel[0];
       proj.y += proj.vel[1];
+
       //remove when out of bounds
       if (proj.y > this.gameBounds[1] || proj.y < 0) {
         this.proj[idx] = null;
@@ -157,6 +133,7 @@
       }
       //check for dead enemies
       this.enemies.forEach(function (enemy, idy) {
+        //don't allow enemy friendly fire
         if (proj.isColliding(enemy) && proj instanceof SI.Rocket) {
           this.proj[idx] = null;
           this.enemies[idy] = null;
@@ -164,7 +141,7 @@
       }.bind(this))
     }.bind(this))
 
-    //clear destroyed projs
+    //clear destroyed projs & enemies
     this.proj = this.proj.filter(function (proj) {
       return !!proj;
     })
@@ -183,7 +160,7 @@
       }
     }
 
-    // let enemies fight back
+    // let frontLine fight back
     Object.keys(frontLine).forEach(function (key) {
       var enemy = frontLine[key]
       if (enemy) {
