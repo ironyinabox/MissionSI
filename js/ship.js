@@ -16,11 +16,8 @@
 
   Ship.prototype.fire = function (enemy) {
     if (this.cooldown == 0) {
-      if (!enemy) {
-        this.game.rockets.push(new SI.Rocket(this.game, this))
-      } else {
-        this.game.bombs.push(new SI.Bomb(this.game, this))
-      }
+      var proj = enemy ? new SI.Bomb(this.game, this) : new SI.Rocket(this.game, this);
+      this.game.proj.push(proj)
       this.cooldown = 40;
     }
   };

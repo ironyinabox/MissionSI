@@ -18,4 +18,10 @@
       this.height
     );
   };
+
+  Obj.prototype.isColliding = function (otherObj) {
+    if (!otherObj) { return false }
+    return this.x >= otherObj.x && this.x <= (otherObj.x + otherObj.width) &&
+      this.y <= (otherObj.y + otherObj.height) && this.y >= otherObj.y;
+  }
 })();

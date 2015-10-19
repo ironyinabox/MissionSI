@@ -16,11 +16,14 @@
   Rocket.prototype = Object.create(SI.Obj.prototype);
 
   var Bomb = SI.Bomb = function (game, ship) {
-    SI.Rocket.call(this, game, ship);
+    SI.Obj.call(this, game);
     this.vel = [0, 3];
     this.sprite.src = 'sprites/bomb.png';
+    this.x = ship.x + Math.floor(ship.width/2) + 1;
     this.y = ship.y + ship.height;
+    this.width = 5;
+    this.height = 10;
   }
 
-  Bomb.prototype = Object.create(SI.Rocket.prototype);
+  Bomb.prototype = Object.create(SI.Obj.prototype);
 })();

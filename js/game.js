@@ -2,32 +2,30 @@
   window.SI = window.SI || {};
 
   var Game = SI.Game = function (ctx) {
-    var that = this;
+    this.ctx = ctx;
+    this.pressedKeys = {};
     this.gameBounds = [800, 500];
     this.ship = new SI.Ship(this);
     this.enemies = [];
+    this.proj = [];
+    this.attackFrequency = .015;
     this.dir = 1.3;
     this.descend = false;
-    this.rockets = [];
-    this.bombs = [];
-    this.pressedKeys = {};
-    this.attackFrequency = .015;
-    this.ctx = ctx;
 
 
     window.addEventListener("keydown", function (e) {
      if(e.keycode > 36 || e.keycode < 41 || e.keycode == 32) {
          e.preventDefault();
      }
-      that.pressedKeys[e.keyCode] = true;
-    });
+      this.pressedKeys[e.keyCode] = true;
+    }.bind(this));
 
     window.addEventListener("keyup", function (e) {
      if(e.keycode > 36 || e.keycode < 41 || e.keycode == 32) {
          e.preventDefault();
      }
-      that.pressedKeys[e.keyCode] = false;
-    });
+      this.pressedKeys[e.keyCode] = false;
+    }.bind(this));
   }
 
   Game.prototype.startGame = function () {
@@ -60,8 +58,7 @@
 
     //Draw other objects
     this.enemies
-      .concat(this.rockets)
-      .concat(this.bombs)
+      .concat(this.proj)
       .forEach(function (obj) {
         obj.draw(this.ctx);
       })
@@ -120,40 +117,12 @@
       this.ship.x = this.gameBounds[0] - this.ship.width;
     }
 
-    //move rockets
-    for (var i = 0; i < this.rockets.length; i++) {
-      var rocket = this.rockets[i];
-      rocket.y += rocket.vel[1];
-      if (rocket.y < 0) {
-         this.rockets.splice(i--, 1);
-      }
-    }
-
-    //move bombs
-    for (var i = 0; i < this.bombs.length; i++) {
-      var bomb = this.bombs[i];
-      bomb.y += bomb.vel[1];
-      if (bomb.y > this.gameBounds[1]) {
-         this.bombs.splice(i--, 1);
-      }
-    }
-
-    // this.bombs
-    //   .concat(this.rockets)
-    //   .forEach(function (proj, idx) {
-    //     proj.x + proj.vel[0];
-    //     proj.y + proj.vel[1];
-    //   })
-
     //check for descend
     for (var i = 0; i < this.enemies.length; i++) {
       var enemy = this.enemies[i];
       if ((enemy.x + this.dir + enemy.width) > this.gameBounds[0] || enemy.x + this.dir < 0) {
         this.dir = -1 * this.dir;
         this.descend = true;
-      }
-      if (enemy.y > this.gameBounds[1]) {
-        this.ship.shields = 0;
       }
     };
 
@@ -164,38 +133,44 @@
       if (this.descend) {
         enemy.y += enemy.vel[1];
       }
+      if (enemy.y > this.gameBounds[1]) {
+        this.ship.shields = 0;
+      }
     }
     this.descend = false;
 
-    //check for damaged shields
-    for (var i = 0; i < this.bombs.length; i++) {
-      var bomb = this.bombs[i];
-      if(bomb.x >= this.ship.x && bomb.x <= (this.ship.x + this.ship.width) &&
-          bomb.y <= (this.ship.y + this.ship.height) && bomb.y >= this.ship.y) {
-          if (!bomb.bang) {
-            bomb.bang = true;
-            this.ship.shields--;
-            break;
-          }
-          this.bombs.splice(j--, 1);
+    //move projs
+    this.proj.forEach(function (proj, idx) {
+      proj.x += proj.vel[0];
+      proj.y += proj.vel[1];
+      //remove when out of bounds
+      if (proj.y > this.gameBounds[1] || proj.y < 0) {
+        this.proj[idx] = null;
       }
-    }
-
-    //check for dead enemies
-    for (var i = 0; i < this.enemies.length; i++) {
-      var enemy = this.enemies[i];
-      for (var j=0; j<this.rockets.length; j++) {
-        var rocket = this.rockets[j];
-
-        if(rocket.x >= enemy.x && rocket.x <= (enemy.x + enemy.width) &&
-            rocket.y <= (enemy.y + enemy.height) && rocket.y >= enemy.y) {
-
-            this.rockets.splice(j--, 1);
-            this.enemies.splice(i--, 1);
-            break;
+      //check for damaged shields
+      if (proj.isColliding(this.ship)) {
+        if (!proj.bang) {
+          proj.bang = true;
+          this.ship.shields--;
         }
+        this.proj[idx] = null;
       }
-    }
+      //check for dead enemies
+      this.enemies.forEach(function (enemy, idy) {
+        if (proj.isColliding(enemy) && proj instanceof SI.Rocket) {
+          this.proj[idx] = null;
+          this.enemies[idy] = null;
+        }
+      }.bind(this))
+    }.bind(this))
+
+    //clear destroyed projs
+    this.proj = this.proj.filter(function (proj) {
+      return !!proj;
+    })
+    this.enemies = this.enemies.filter(function (enemy) {
+      return !!enemy;
+    })
 
     //group up the front line
     var frontLine = {};
@@ -220,13 +195,5 @@
         }
       }
     }.bind(this))
-
-
-
   }
-
-
-
-
-
 })();
