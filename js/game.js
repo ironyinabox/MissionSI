@@ -5,14 +5,13 @@
     var that = this;
     this.gameBounds = [800, 500];
     this.ship = new SI.Ship(this);
-    this.opps = [];
+    this.enemies = [];
     this.dir = 1.3;
     this.descend = false;
     this.rockets = [];
     this.bombs = [];
     this.pressedKeys = {};
     this.attackFrequency = .015;
-    this.shields = 10;
     this.ctx = ctx;
 
 
@@ -37,7 +36,7 @@
 
       for (var i = 0; i <= 10; i++) {
         var file = this.gameBounds[0]/4 + (i * 30)
-        this.opps.push(new SI.Ship(
+        this.enemies.push(new SI.Enemy(
           this,
           file,
           rank
@@ -59,45 +58,26 @@
     //Draw ship
     this.ship.draw(this.ctx);
 
-    //Draw Rockets
-    this.ctx.fillStyle = '#CC3300';
-    this.rockets.forEach(function (rocket) {
-      this.ctx.fillRect(rocket.x, rocket.y, rocket.width, rocket.height)
-    })
-
-    //Draw Opps
-    this.ctx.fillStyle = '#CC00CC';
-    this.opps.forEach(function (opp) {
-      opp.draw(this.ctx, true);
-    })
-
-    //Draw Bombs
-    this.ctx.fillStyle = '#CC3300';
-    this.bombs.forEach(function (bomb) {
-      this.ctx.fillRect(bomb.x, bomb.y, bomb.width, bomb.height)
-    })
+    //Draw other objects
+    this.enemies
+      .concat(this.rockets)
+      .concat(this.bombs)
+      .forEach(function (obj) {
+        obj.draw(this.ctx);
+      })
 
     //Draw HUD
     this.ctx.font="20px Roboto";
     this.ctx.fillStyle = '#ffffff';
-    var text = "    Shields: " + this.shields;
+    var text = "    Shields: " + this.ship.shields;
     this.ctx.fillText(text, 0, 480);
 
     //check for gameover
-    if (this.shields < 1) {
+    if (this.ship.shields < 1 || this.enemies.length < 1) {
       this.ctx.clearRect(0, 0, this.gameBounds[0], this.gameBounds[1]);
       this.ctx.font="50px Roboto";
       this.ctx.fillStyle = '#000000';
-      var text = " GAME OVER ";
-      this.ctx.fillText(text, 200, 300);
-      clearInterval(this.intervalId);
-    }
-    //check for gameover
-    if (this.opps.length < 1) {
-      this.ctx.clearRect(0, 0, this.gameBounds[0], this.gameBounds[1]);
-      this.ctx.font="50px Roboto";
-      this.ctx.fillStyle = '#000000';
-      var text = " YOU WIN ";
+      var text = (this.ship.shields < 1 ? "GAME OVER" : "YOU WIN")
       this.ctx.fillText(text, 200, 300);
       clearInterval(this.intervalId);
     }
@@ -115,17 +95,16 @@
   Game.prototype.update = function () {
     // move ship
     if (this.pressedKeys[37]) {
-      this.ship.x -= 3
+      this.ship.x -= this.ship.vel;
     }
     if (this.pressedKeys[39]) {
-      this.ship.x += 3
+      this.ship.x += this.ship.vel;
     }
 
     //fire zee missiles
     if (this.pressedKeys[32]) {
       if (this.ship.cooldown == 0) {
         this.ship.fire();
-        this.ship.cooldown = 40;
       }
     }
 
@@ -144,7 +123,7 @@
     //move rockets
     for (var i = 0; i < this.rockets.length; i++) {
       var rocket = this.rockets[i];
-      rocket.y -= 7;
+      rocket.y += rocket.vel[1];
       if (rocket.y < 0) {
          this.rockets.splice(i--, 1);
       }
@@ -153,30 +132,37 @@
     //move bombs
     for (var i = 0; i < this.bombs.length; i++) {
       var bomb = this.bombs[i];
-      bomb.y += 3;
+      bomb.y += bomb.vel[1];
       if (bomb.y > this.gameBounds[1]) {
          this.bombs.splice(i--, 1);
       }
     }
 
+    // this.bombs
+    //   .concat(this.rockets)
+    //   .forEach(function (proj, idx) {
+    //     proj.x + proj.vel[0];
+    //     proj.y + proj.vel[1];
+    //   })
+
     //check for descend
-    for (var i = 0; i < this.opps.length; i++) {
-      var opp = this.opps[i];
-      if ((opp.x + this.dir + opp.width) > this.gameBounds[0] || opp.x + this.dir < 0) {
+    for (var i = 0; i < this.enemies.length; i++) {
+      var enemy = this.enemies[i];
+      if ((enemy.x + this.dir + enemy.width) > this.gameBounds[0] || enemy.x + this.dir < 0) {
         this.dir = -1 * this.dir;
         this.descend = true;
       }
-      if (opp.y > this.gameBounds[1]) {
-        this.shields = 0;
+      if (enemy.y > this.gameBounds[1]) {
+        this.ship.shields = 0;
       }
     };
 
-    //move opps
-    for (var i = 0; i < this.opps.length; i++) {
-      var opp = this.opps[i];
-      opp.x += this.dir;
+    //move enemies
+    for (var i = 0; i < this.enemies.length; i++) {
+      var enemy = this.enemies[i];
+      enemy.x += this.dir;
       if (this.descend) {
-        opp.y += 25;
+        enemy.y += enemy.vel[1];
       }
     }
     this.descend = false;
@@ -188,24 +174,24 @@
           bomb.y <= (this.ship.y + this.ship.height) && bomb.y >= this.ship.y) {
           if (!bomb.bang) {
             bomb.bang = true;
-            this.shields -= 1;
+            this.ship.shields--;
             break;
           }
           this.bombs.splice(j--, 1);
       }
     }
 
-    //check for dead opps
-    for (var i = 0; i < this.opps.length; i++) {
-      var opp = this.opps[i];
+    //check for dead enemies
+    for (var i = 0; i < this.enemies.length; i++) {
+      var enemy = this.enemies[i];
       for (var j=0; j<this.rockets.length; j++) {
         var rocket = this.rockets[j];
 
-        if(rocket.x >= opp.x && rocket.x <= (opp.x + opp.width) &&
-            rocket.y <= (opp.y + opp.height) && rocket.y >= opp.y) {
+        if(rocket.x >= enemy.x && rocket.x <= (enemy.x + enemy.width) &&
+            rocket.y <= (enemy.y + enemy.height) && rocket.y >= enemy.y) {
 
             this.rockets.splice(j--, 1);
-            this.opps.splice(i--, 1);
+            this.enemies.splice(i--, 1);
             break;
         }
       }
@@ -213,25 +199,24 @@
 
     //group up the front line
     var frontLine = {};
-    for (var i = 0; i < this.opps.length; i++) {
-      var opp = this.opps[i];
-      frontLine[opp.x] = frontLine[opp.x] || opp;
-      var current = frontLine[opp.x];
-      if (opp.y > current.y) {
-        frontLine[opp.x] = opp
+    for (var i = 0; i < this.enemies.length; i++) {
+      var enemy = this.enemies[i];
+      frontLine[enemy.x] = frontLine[enemy.x] || enemy;
+      var current = frontLine[enemy.x];
+      if (enemy.y > current.y) {
+        frontLine[enemy.x] = enemy
       }
     }
 
-    // let opps fight back
+    // let enemies fight back
     Object.keys(frontLine).forEach(function (key) {
-      var opp = frontLine[key]
-      if (opp) {
+      var enemy = frontLine[key]
+      if (enemy) {
         if (this.attackFrequency > Math.random()) {
-          console.log("whu")
-          opp.fire(true);
+          enemy.fire(true);
         }
-        if (opp.cooldown > 0) {
-          opp.cooldown -= 1;
+        if (enemy.cooldown > 0) {
+          enemy.cooldown -= 1;
         }
       }
     }.bind(this))
